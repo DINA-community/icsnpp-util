@@ -2,45 +2,39 @@
 
 set -ex
 
-if ! [ -d "util" -a -d "pres" -a -d "acse" -a -d "mms" ];
-then
-    echo "directories missing";
-    exit 1;
-fi;
+for dir in util pres acse mms; do
+    if ! [[ -d "$dir" ]]; then
+        echo "directory $dir missing"
+        exit 1
+    fi
+done
 
-cd pres/plugin/src/asn1c
-asn1c -fcompound-names ../../../../util/pres.asn
-sed -i 's/void (\*free)(type \*);/void (*free)(void *);/' asn_SET_OF.h
-sed -i 's/_BSD_SOURCE/_DEFAULT_SOURCE/g' asn_system.h 
-mv converter-sample.c ../../../testing/Files/asn1c-test.c
-rm Makefile.am.sample
-cd -
+NAMES=(     "pres"                           "acse"                           "mms")
+ASN_PATHS=( "util/pres.asn"                  "util/acse.asn"                  "util/mms-simple.asn")
+PLUGINS=(   "zeek::plugin::pres"             "zeek::plugin::ACSE"             "zeek::plugin::MMS")
+ASN_DIRS=(  "pres/plugin/src/asn1c"          "acse/plugin/src/asn1c"          "mms/plugin/src/asn1c")
+PROCESS_H=( "pres/plugin/src/process.h"      "acse/plugin/src/process.h"      "mms/plugin/src/process.h")
+PROCESS_CC=("pres/plugin/src/process.cc"     "acse/plugin/src/process.cc"     "mms/plugin/src/process.cc")
+TYPES_ZEEK=("pres/plugin/scripts/types.zeek" "acse/plugin/scripts/types.zeek" "mms/plugin/scripts/types.zeek")
 
-python3 util/gen.py hpp PRES zeek::plugin::pres util/pres.asn | clang-format > pres/plugin/src/process.h
-python3 util/gen.py cpp PRES zeek::plugin::pres util/pres.asn | clang-format > pres/plugin/src/process.cc
-python3 util/gen.py zeek PRES util/pres.asn > pres/plugin/scripts/types.zeek
+for i in "${!NAMES[@]}"; do
+    name=${NAMES[$i]}
+    asn=${ASN_PATHS[$i]}
+    plugin=${PLUGINS[$i]}
+    asn_dir=${ASN_DIRS[$i]}
+    proc_h=${PROCESS_H[$i]}
+    proc_cc=${PROCESS_CC[$i]}
+    types_zeek=${TYPES_ZEEK[$i]}
 
+    pushd "$asn_dir"
+    asn1c -fcompound-names $(realpath "../../../../$asn")
+    sed -i 's/void (\*free)(type \*);/void (*free)(void *);/' asn_SET_OF.h
+    sed -i 's/_BSD_SOURCE/_DEFAULT_SOURCE/g' asn_system.h 
+    mv converter-sample.c ../../../testing/Files/asn1c-test.c
+    rm Makefile.am.sample
+    popd
 
-cd acse/plugin/src/asn1c
-asn1c -fcompound-names ../../../../util/acse.asn
-sed -i 's/void (\*free)(type \*);/void (*free)(void *);/' asn_SET_OF.h
-sed -i 's/_BSD_SOURCE/_DEFAULT_SOURCE/g' asn_system.h 
-mv converter-sample.c ../../../testing/Files/asn1c-test.c
-rm Makefile.am.sample
-cd -
-
-python3 util/gen.py hpp ACSE zeek::plugin::ACSE util/acse.asn | clang-format > acse/plugin/src/process.h
-python3 util/gen.py cpp ACSE zeek::plugin::ACSE util/acse.asn | clang-format > acse/plugin/src/process.cc
-python3 util/gen.py zeek ACSE util/acse.asn > acse/plugin/scripts/types.zeek
-
-cd mms/plugin/src/asn1c
-asn1c -fcompound-names ../../../../util/mms-simple.asn
-sed -i 's/void (\*free)(type \*);/void (*free)(void *);/' asn_SET_OF.h
-sed -i 's/_BSD_SOURCE/_DEFAULT_SOURCE/g' asn_system.h 
-mv converter-sample.c ../../../testing/Files/asn1c-test.c
-rm Makefile.am.sample
-cd -
-
-python3 util/gen.py hpp MMS zeek::plugin::MMS util/mms-simple.asn | clang-format > mms/plugin/src/process.h
-python3 util/gen.py cpp MMS zeek::plugin::MMS util/mms-simple.asn | clang-format > mms/plugin/src/process.cc
-python3 util/gen.py zeek MMS util/mms-simple.asn > mms/plugin/scripts/types.zeek
+    python3 util/gen.py hpp "${name^^}" "$plugin" "$asn" | clang-format > "$proc_h"
+    python3 util/gen.py cpp "${name^^}" "$plugin" "$asn" | clang-format > "$proc_cc"
+    python3 util/gen.py zeek "${name^^}" "$asn" > "$types_zeek"
+done
