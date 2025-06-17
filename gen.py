@@ -350,6 +350,8 @@ def create_processor(typeDef, moduleName, module, typeId=None):
             if typeDef["type"] == "CHOICE":
                 src = f"src->choice.{c_field_name(m['name'])}"
                 fieldname_c = c_field_name(typeId + "_PR_" + m['name'])
+                if "__Member__" in fieldname_c:
+                    fieldname_c=fieldname_c.split("__Member__")[-1]
                 cond = f"src->present=={fieldname_c}"
             else:
                 src = f"src->{c_field_name(m['name'])}"
