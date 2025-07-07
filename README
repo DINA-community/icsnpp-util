@@ -1,0 +1,84 @@
+# Automated Code Generation for ICSNPP Plugins
+
+This project provides an automated solution for generating source code for the following ICSNPP Zeek plugins:
+
+- **icsnpp-mms** (based on `mms-simple.asn`)
+- **icsnpp-acse** (based on `acse.asn`)
+- **icsnpp-pres** (based on `pres.asn`)
+
+The included scripts `gen.py` and `gen-all.sh` support you in efficiently generating the required parsers, type definitions, and the mapping between ASN.1 and Zeek/C++.
+
+## Prerequisites
+
+Please ensure the following dependencies and directories are available:
+
+- [asn1c](http://lionet.info/asn1c/), tested with **version 0.9.28**
+- [Python](https://python.org/) (for running `gen.py`)
+- [asn1tools](https://pypi.org/project/asn1tools/), tested with **version 0.167.0**
+- Directory structure:
+    - `mms/`, `acse/`, `pres/` (respective plugin folders)
+    - `util/` (this project, containing the code generators)
+    - All directories must be on the same level.
+
+## Complete Generation (Recommended)
+
+To trigger the generation of all three plugin codebases, run the following script from the root directory:
+
+```sh
+util/gen-all.sh
+```
+
+> **Note**  
+> The plugin folders and the `util/` directory must be named exactly as shown and correctly placed (see [Directory Structure](#directory-structure)).
+
+## Step-by-Step Generation
+
+If you want to manually and individually generate the code, please follow the steps below (using `mms-simple.asn` as an example):
+
+### 1. Generate ASN.1 Parser
+
+Navigate to the `plugin/src/asn1c` directory of the plugin and create a C-based parser with asn1c:
+
+```sh
+asn1c -fcompound-names <ASN1-FILE>
+```
+
+The generated C files will be located in the same directory.
+
+### 2. Generate Zeek Type Definitions
+
+Generate Zeek type definitions directly from your ASN.1 specification using `gen.py`:
+
+```sh
+python gen.py zeek <ASN1-UNIT-NAME> <ASN1-FILE> > plugin/scripts/types.zeek
+```
+
+Each ASN.1 type will be mapped to a corresponding Zeek type.
+
+### 3. Generate Mapping: C Structs to Zeek Types
+
+Generate the necessary C++ files for mapping between the asn1c-generated structures and the Zeek types:
+
+```sh
+python gen.py cpp <ASN1-UNIT-NAME> <C++-NAMESPACE> <ASN1-FILE> > plugin/src/process.cc
+python gen.py hpp <ASN1-UNIT-NAME> <C++-NAMESPACE> <ASN1-FILE> > plugin/src/process.h
+```
+
+## Directory Structure
+
+A recommended folder structure looks as follows:
+
+```
+your-project-root/
+  mms/      # Plugin directory for MMS
+  acse/     # Plugin directory for ACSE
+  pres/     # Plugin directory for PRES
+  util/     # Code generator (this project)
+```
+
+## License
+
+The software was developed on behalf of the BSI (Federal Office for Information Security)
+
+Copyright (c) 2025 by DINA-Community BSD 3-Clause. [See License](/COPYING)
+
